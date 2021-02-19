@@ -14,9 +14,9 @@ print(sf)
 df = df.loc[df.dep.isin(dep_to_check) == True]
 
 
-fig = px.choropleth_mapbox(df, geojson=sf, color="dc",
+fig = px.choropleth_mapbox(df, geojson=sf, color="rea",
                            locations="dep", featureidkey="properties.code",
                            center={"lat": 46.22, "lon": 2.21},
-                           mapbox_style="carto-positron", zoom=3, range_color=[0, 500])
+                           mapbox_style="carto-positron", zoom=5, range_color=[0, 500])
 
 fig.show()
