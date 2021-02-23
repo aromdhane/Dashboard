@@ -19,7 +19,25 @@ colors = {
 # see https://plotly.com/python/px-arguments/ for more options
 df = pd.read_csv("donnees-hospitalieres-covid19-2021-02-18-19h03.csv", delimiter=';') 
 
+#data pour vaccination
+#import des données
+df_vacc=pd.read_csv("https://www.data.gouv.fr/fr/datasets/r/900da9b0-8987-4ba7-b117-7aea0e53f530", delimiter=',')
+df_tot_vacc=df_vacc.loc[df_vacc['vaccin']==0]
 
+#pour la construction du dropdown
+col_options=[]
+num_reg=[ 1,  2,  3,  4,  6,  7, 11, 24, 27, 28, 32, 44, 52, 53, 75, 76, 84,
+       93, 94]
+list_reg =['Guadeloupe', 'Martinique', 'Guyane', 'La Réunion', 'Mayotte',
+       'Île-de-France', 'Centre-Val de Loire', 'Bourgogne-Franche-Comté',
+       'Normandie', 'Hauts-de-France', 'Grand Est', 'Pays de la Loire',
+       'Bretagne', 'Nouvelle-Aquitaine', 'Occitanie',
+       'Auvergne-Rhône-Alpes', "Provence-Alpes-Côte d'Azur", 'Corse']
+dictionary = dict(zip(num_reg, list_reg))
+
+for key, values in dictionary.items():
+    my_dict={'label':values, 'value':key}
+    col_options.append(my_dict)
 
 ### data preprocess pour carte
 
@@ -48,8 +66,8 @@ app.layout =  html.Div(children=[
     style={'marginBottom': 50, 'marginTop': 25, 'textAlign': 'center'}
     ),
     
-    html.Div(children='Situation hospitalière Globale',  
-             style={'marginBottom': 20, 'marginTop': 20, 'textAlign': 'Left', 'color' : colors['text']}),
+    html.Div(html.H2('Situation hospitalière Globale'),  
+             ),
     
     dcc.Slider(
         id='sexe-slider',
@@ -58,12 +76,20 @@ app.layout =  html.Div(children=[
         value=df['sexe'].min(),
         marks={str(sexe): f"{['Total','Hommes','Femmes'][sexe]}" for sexe in df['sexe'].unique()},
         step=None,
-        tooltip={'placement':'topLeft'}
+        tooltip={'placement':'topLeft'},   
     ),
-    dcc.Graph(id='graph-with-slider',style={'width':'90%'}),
+    dcc.Graph(id='graph-with-slider'),
+    
+
+    #suivi de la vaccination par région
+    html.Div(html.H1("Suivi vaccination par région")
+    ),
+    dcc.Dropdown(id='reg', value=1, options=col_options),
+    dcc.Graph(id='graph_vacc', figure={}),
+
     
     #new graph with dropdown hospitalisation et rea pour chaque departement
-    html.Div(children='Situation hospitalière départementale'),
+    html.Div(html.H2('Situation hospitalière départementale')),
     dcc.Dropdown(
         id='mydrop',
         options=[
@@ -192,6 +218,8 @@ app.layout =  html.Div(children=[
 ],
 )
 
+#callback for the dropdown graph of the global hospitalisation
+
 @app.callback(
     Output('graph-with-slider', 'figure'),
     Input('sexe-slider', 'value'))
@@ -208,7 +236,7 @@ def update_figure(selected_sexe):
 
     return fig
 
-# callback for the dropdown graph
+# callback for the dropdown graph of hospitalisation per department
 @app.callback(
     Output('department-dropdown', 'figure'),
     Input('mydrop', 'value'))
@@ -216,10 +244,17 @@ def update_figure(value):
     df_tot=df.query("sexe==0")
     df_dep= df_tot.loc[df_tot['dep'] == value]
     
-    fig = px.line(df_dep, x="jour", y=['hosp','rea'],
+    fig = px.line(df_dep, x="jour", y=['hosp','rea','dc'],
            labels={'value':'Total', 'jour':''})
 
     return fig
 
+#graphique vaccination
+@app.callback(Output('graph_vacc','figure'), [Input('reg','value')])
+def cb(value):
+    value=value if value else 1
+    df_reg=df_tot_vacc.query('reg == @value')
+    return px.line(df_reg, x='jour', y="n_cum_dose1", height=400,labels={'n_cum_dose1':'Total première dose', 'jour':'date'})
+
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, port=8051)
